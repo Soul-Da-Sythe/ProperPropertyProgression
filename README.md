@@ -21,8 +21,9 @@ By default everything in the RV is deleted at start, if you want to disable that
 I dont want people cheating by picking up RV items. You start with nothing.  
 (btw you start with $475, have fun picking up trash!) *Laughs in pickpocket*
 
-UPDATE
+UPDATE  
 Unlocked Albert after fixing RV
+
 ---
 
 ### My other Mods!
