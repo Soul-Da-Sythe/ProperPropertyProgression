@@ -7,7 +7,7 @@
 
 This is a mod that changes the progression through the properties of Schedule I.
 
-So instead of starting with the Motel you have to repair your mangled RV first.  
+So instead of starting with the Motel you have to repair your mangled RV first (forgot to tell yall you gotta talk to marco).  
 Also increases the price of the Motel, the Sweatshop, and the Bungalow.   
 (the little picture in Ray's doesn't update because that sounds hard)  
 - RV = $500 (She'll never move again im afraid 😔)  
@@ -21,6 +21,8 @@ By default everything in the RV is deleted at start, if you want to disable that
 I dont want people cheating by picking up RV items. You start with nothing.  
 (btw you start with $475, have fun picking up trash!) *Laughs in pickpocket*
 
+UPDATE
+Unlocked Albert after fixing RV
 ---
 
 ### My other Mods!
