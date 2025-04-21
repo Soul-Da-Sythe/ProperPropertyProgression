@@ -11,6 +11,8 @@ using System.Linq;
 using System.Collections.Generic;
 using Il2CppFluffyUnderware.DevTools.Extensions;
 using Il2CppInterop.Runtime;
+using Il2CppScheduleOne.NPCs.CharacterClasses;
+using static Il2CppScheduleOne.NPCs.Relation.NPCRelationData;
 
 [assembly: MelonInfo(typeof(ProperPropertyProgression.ProperPropertyProgression), "ProperPropertyProgression", "1.0.0", "Soul", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
@@ -54,6 +56,28 @@ namespace ProperPropertyProgression
             LoggerInstance.Msg("Config initialized.");
             Melon<ProperPropertyProgression>.Logger.Msg("Initialized!");
             SceneManager.add_sceneLoaded((Action<Scene, LoadSceneMode>)OnSceneLoaded);
+        }
+
+        public static void UnlockAlbertNow()
+        {
+            foreach (var albert in UnityEngine.Object.FindObjectsOfType<Albert>())
+            {
+                if (albert?.gameObject?.name == "Albert")
+                {
+                    try
+                    {
+                        albert.SupplierUnlocked(EUnlockType.Recommendation, true);
+                        MelonLogger.Msg("[AlbertUnlocker] SupplierUnlocked successfully called on Albert!");
+                    }
+                    catch (System.Exception ex)
+                    {
+                        MelonLogger.Error($"[AlbertUnlocker] Error calling SupplierUnlocked: {ex}");
+                    }
+                    return;
+                }
+            }
+
+            MelonLogger.Warning("[AlbertUnlocker] Could not find the Albert component in scene.");
         }
 
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -217,6 +241,7 @@ namespace ProperPropertyProgression
                     SetQuestInactive("Read the note");
                     ClearRVItemContainers();
                     SetRVActive();
+                    UnlockAlbertNow();
                     Melon<ProperPropertyProgression>.Logger.Msg($"${ModConfig.RVPrice.Value} deducted and RV restored.");
                 }
             }
