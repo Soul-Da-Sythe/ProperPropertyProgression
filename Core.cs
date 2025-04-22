@@ -14,6 +14,7 @@ using Il2CppInterop.Runtime;
 using Il2CppScheduleOne.NPCs.CharacterClasses;
 using static Il2CppScheduleOne.NPCs.Relation.NPCRelationData;
 using static ProperPropertyProgression.ProperPropertyProgression;
+using HarmonyLib;
 
 [assembly: MelonInfo(typeof(ProperPropertyProgression.ProperPropertyProgression), "ProperPropertyProgression", "1.0.0", "Soul", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
@@ -22,6 +23,16 @@ namespace ProperPropertyProgression
 {
     public class ProperPropertyProgression : MelonMod
     {
+        [HarmonyPatch(typeof(Il2CppScheduleOne.Property.RV), nameof(Il2CppScheduleOne.Property.RV.ShouldSave))]
+        public class RV_ShouldSave_ForceTrue
+        {
+            static bool Prefix(ref bool __result)
+            {
+                __result = true; // Always force the return value
+                return false;    // Skip the original method
+            }
+        }
+
         public static class ModConfig
         {
             private static MelonPreferences_Category PropertyChanges;
@@ -129,11 +140,10 @@ namespace ProperPropertyProgression
             }
             if(ModConfig.ChangeBusinessPrices.Value)
             DialogueModifier.SetBusinessPricesAndCapacities();
-
+            DisableQuestExplosions();
             DialogueModifier.SetQuestActive("Talk to the manager in the motel office");
             DialogueModifier.SetQuestActive("Talk to Mrs. Ming at the Chinese restaurant");
-
-            if (CheckFirstQuest()) ClearRVItemContainers();
+            if (CheckFirstQuest() && ModConfig.StartRVEmpty.Value) ClearRVItemContainers();
             DialogueModifier.SetupMarcoRentRoomChoice();
         }
 
@@ -340,14 +350,25 @@ public static void SetMappedPropertyPrices()
                     SetQuestInactive("Head back to the RV");
                     SetQuestInactive("Investigate the explosion");
                     SetQuestInactive("Read the note");
-                    ClearRVItemContainers();
+                    if (!ModConfig.StartRVEmpty.Value)ClearRVItemContainers();
                     SetRVActive();
                     UnlockAlbertNow();
                     Melon<ProperPropertyProgression>.Logger.Msg($"${ModConfig.RVPrice.Value} deducted and RV restored.");
                 }
             }
         }
-
+        public static void DisableQuestExplosions()
+        {
+            foreach (var obj in UnityEngine.Resources.FindObjectsOfTypeAll(Il2CppType.Of<Il2CppScheduleOne.Quests.Quest_WelcomeToHylandPoint>()))
+            {
+                var quest = obj.TryCast<Il2CppScheduleOne.Quests.Quest_WelcomeToHylandPoint>();
+                if (quest != null && quest.onExplode != null)
+                {
+                    quest.onExplode = new UnityEngine.Events.UnityEvent(); // replaces only this field
+                    Melon<ProperPropertyProgression>.Logger.Msg("onExplode disabled for Quest_WelcomeToHylandPoint.");
+                }
+            }
+        }
         public static void SetRVActive()
         {
             GameObject rvContainer = null, intactRV = null, destroyedRV = null;
@@ -451,12 +472,19 @@ public static void SetMappedPropertyPrices()
                     {
                         gridComp.DestroyGrid();
                         destroyed++;
+
                     }
                 }
             }
-
-            Melon<ProperPropertyProgression>.Logger.Msg($"Called DestroyGrid() on {destroyed} Grid objects.");
         }
+
+
+    
+
+
+
+
+
 
         public static Il2CppScheduleOne.ItemFramework.CashInstance GetClosestPlayersCashInstance(GameObject npc)
         {
