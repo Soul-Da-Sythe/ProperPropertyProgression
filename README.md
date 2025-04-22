@@ -1,5 +1,6 @@
 # Property Overhaul  
-by SoulDaSythe & pooderman
+by SoulDaSythe & pooderman 
+
 
 
 
@@ -42,6 +43,9 @@ Unlocked Albert after fixing RV
 UPDATE 2
 Fixed bug where your RV gets wiped everytime you enter your save.
 
+UPDATE 3
+Actually fixed the bug, it wasnt a bug. It was intended by the developer to not save the RV contents on the first save.  
+Forced it to save and it now works.
 ---
 
 ### My other Mods!
@@ -54,7 +58,7 @@ Fixed bug where your RV gets wiped everytime you enter your save.
 
 ---
 
-Look out for future quality mods, might be a little slow as I'm out of good ideas.
+Look out for future quality mods, might be a little slow as I have too many good ideas. (thanks pooderman!)
 
 ---
 
