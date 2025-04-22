@@ -28,8 +28,8 @@ namespace ProperPropertyProgression
         {
             static bool Prefix(ref bool __result)
             {
-                __result = true; // Always force the return value
-                return false;    // Skip the original method
+                __result = true; // finding this single method took me 3 hours. i am not good at what i do
+                return false;    
             }
         }
 
