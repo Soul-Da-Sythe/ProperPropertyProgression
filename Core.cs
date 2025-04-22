@@ -13,6 +13,7 @@ using Il2CppFluffyUnderware.DevTools.Extensions;
 using Il2CppInterop.Runtime;
 using Il2CppScheduleOne.NPCs.CharacterClasses;
 using static Il2CppScheduleOne.NPCs.Relation.NPCRelationData;
+using static ProperPropertyProgression.ProperPropertyProgression;
 
 [assembly: MelonInfo(typeof(ProperPropertyProgression.ProperPropertyProgression), "ProperPropertyProgression", "1.0.0", "Soul", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
@@ -28,25 +29,62 @@ namespace ProperPropertyProgression
             public static MelonPreferences_Entry<int> MotelPrice;
             public static MelonPreferences_Entry<int> SweatshopPrice;
             public static MelonPreferences_Entry<int> BungalowPrice;
+            public static MelonPreferences_Entry<int> BarnPrice;
+            public static MelonPreferences_Entry<int> WarehousePrice;
+            public static MelonPreferences_Entry<int> ManorPrice;
 
             private static MelonPreferences_Category RVChanges;
             public static MelonPreferences_Entry<bool> StartRVEmpty;
             public static MelonPreferences_Entry<int> RVPrice;
 
+            private static MelonPreferences_Category BusinessChanges;
+            public static MelonPreferences_Entry<bool> ChangeBusinessPrices;
+            public static MelonPreferences_Entry<int> LaundromatPrice;
+            public static MelonPreferences_Entry<int> PostOfficePrice;
+            public static MelonPreferences_Entry<int> CarWashPrice;
+            public static MelonPreferences_Entry<int> TacoTicklersPrice;
+
+            public static MelonPreferences_Entry<int> LaundromatLaunder;
+            public static MelonPreferences_Entry<int> PostOfficeLaunder;
+            public static MelonPreferences_Entry<int> CarWashLaunder;
+            public static MelonPreferences_Entry<int> TacoTicklersLaunder;
+
+
             public static void Setup()
             {
                 PropertyChanges = MelonPreferences.CreateCategory("ProperPropertyProgression", "Proper Property Progression Changes", true);
-                ChangeHousePrices = PropertyChanges.CreateEntry("ChangeHousePrices", true, "Change house prices.", "Changes the prices of the Hotel, the Sweatshop, and the Bungalow.");
-                MotelPrice = PropertyChanges.CreateEntry("MotelPrice", 2500, "Hotel Price");
-                SweatshopPrice = PropertyChanges.CreateEntry("SweatshopPrice", 5000, "Sweatshop Price");
-                BungalowPrice = PropertyChanges.CreateEntry("BungalowPrice", 15000, "Bungalow Price");
+                ChangeHousePrices = PropertyChanges.CreateEntry("ChangeHousePrices", true, "Change house prices.", "Changes the prices of all the properties.");
+                MotelPrice = PropertyChanges.CreateEntry("MotelPrice", 2500, "Hotel Price ", "GAME DEFAULT = 75");
+                SweatshopPrice = PropertyChanges.CreateEntry("SweatshopPrice", 8000, "Sweatshop Price ", "GAME DEFAULT = 500 (idk why its not 800, i think the price you pay is separate from its ingame price)");
+                BungalowPrice = PropertyChanges.CreateEntry("BungalowPrice", 35000, "Bungalow Price", " GAME DEFAULT = 6000");
+                BarnPrice = PropertyChanges.CreateEntry("BarnPrice", 80000, "Barn Price", " GAME DEFAULT = 25000");
+                WarehousePrice = PropertyChanges.CreateEntry("WarehousePrice", 100000, "Docks Warehouse Price", " GAME DEFAULT = 50000");
+                ManorPrice = PropertyChanges.CreateEntry("ManorPrice", 150000, "Manor Price", " GAME DEFAULT = 50000");
 
                 RVChanges = MelonPreferences.CreateCategory("ProperPropertyProgression", "RVChanges", true);
                 StartRVEmpty = RVChanges.CreateEntry("StartRVEmpty", true, "Start RV Empty", "Deletes everything in the RV at the start. (Note, after the RV is destroyed everything is still deleted before you repair it. This just ensure you can't cheese by picking everything up before.)");
                 RVPrice = RVChanges.CreateEntry("RVPrice", 500, "RV Price");
 
+                BusinessChanges = MelonPreferences.CreateCategory("ProperPropertyProgression", "Business Changes", true);
+                ChangeBusinessPrices = BusinessChanges.CreateEntry("ChangeBusinessPrices", true, "Change house prices.", "Changes the prices of all the businesses.");
+                LaundromatPrice = BusinessChanges.CreateEntry("LaundromatPrice", 10000, "Laundromat Price ", "GAME DEFAULT = 4000");
+                PostOfficePrice = BusinessChanges.CreateEntry("PostOfficePrice", 20000, "Post Office Price ", "GAME DEFAULT = 10000");
+                CarWashPrice = BusinessChanges.CreateEntry("CarWashPrice", 40000, "Car Wash Price ", "GAME DEFAULT = 20000");
+                TacoTicklersPrice = BusinessChanges.CreateEntry("TacoTicklersPrice", 70000, "TacoTicklers Price ", "GAME DEFAULT = 50000");
+
+                LaundromatLaunder = BusinessChanges.CreateEntry("LaundromatLaunder", 5000, "Laundromat Launder Capacity ", "GAME DEFAULT = 2000");
+                PostOfficeLaunder = BusinessChanges.CreateEntry("PostOfficeLaunder", 5000, "Post Office Launder Capacity ", "GAME DEFAULT = 4000");
+                CarWashLaunder = BusinessChanges.CreateEntry("CarWashLaunder", 5000, "Car Wash Launder Capacity", "GAME DEFAULT = 6000");
+                TacoTicklersLaunder = BusinessChanges.CreateEntry("TacoTicklersLaunder", 5000, "TacoTicklers Launder Capacity", " GAME DEFAULT = 8000");
+
                 PropertyChanges.SaveToFile(false);
                 RVChanges.SaveToFile(false);
+                BusinessChanges.SaveToFile(false);
+
+
+
+
+
             }
         }
 
@@ -60,24 +98,16 @@ namespace ProperPropertyProgression
 
         public static void UnlockAlbertNow()
         {
+
             foreach (var albert in UnityEngine.Object.FindObjectsOfType<Albert>())
             {
                 if (albert?.gameObject?.name == "Albert")
                 {
-                    try
-                    {
-                        albert.SupplierUnlocked(EUnlockType.Recommendation, true);
-                        MelonLogger.Msg("[AlbertUnlocker] SupplierUnlocked successfully called on Albert!");
-                    }
-                    catch (System.Exception ex)
-                    {
-                        MelonLogger.Error($"[AlbertUnlocker] Error calling SupplierUnlocked: {ex}");
-                    }
-                    return;
+                  
+                   albert.SupplierUnlocked(EUnlockType.Recommendation, true);
+                  return;
                 }
             }
-
-            MelonLogger.Warning("[AlbertUnlocker] Could not find the Albert component in scene.");
         }
 
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -95,22 +125,24 @@ namespace ProperPropertyProgression
             if (ModConfig.ChangeHousePrices.Value)
             {
                 DialogueModifier.ApplyPatch();
-                DialogueModifier.SetAllBungalowPrices(ModConfig.BungalowPrice.Value);
+                DialogueModifier.SetMappedPropertyPrices();
             }
+            if(ModConfig.ChangeBusinessPrices.Value)
+            DialogueModifier.SetBusinessPricesAndCapacities();
 
             DialogueModifier.SetQuestActive("Talk to the manager in the motel office");
             DialogueModifier.SetQuestActive("Talk to Mrs. Ming at the Chinese restaurant");
 
-            if (ShouldClearRVBasedOnFirstQuest()) ClearRVItemContainers();
+            if (CheckFirstQuest()) ClearRVItemContainers();
             DialogueModifier.SetupMarcoRentRoomChoice();
         }
 
         public static class DialogueModifier
         {
-            private static Dictionary<string, int> npcPriceMap = new()
+            private static Dictionary<string, int> PriceMap = new()
             {
                 { "Donna", ModConfig.MotelPrice.Value },
-                { "Ming", ModConfig.SweatshopPrice.Value },
+                { "Ming", ModConfig.SweatshopPrice.Value }
             };
 
             public static void ApplyPatch()
@@ -119,7 +151,7 @@ namespace ProperPropertyProgression
                 foreach (var controller in allControllers)
                 {
                     var parentName = controller.gameObject.transform.parent?.name;
-                    if (parentName != null && npcPriceMap.TryGetValue(parentName, out int newPrice))
+                    if (parentName != null && PriceMap.TryGetValue(parentName, out int newPrice))
                     {
                         controller.Price = newPrice;
                     }
@@ -150,15 +182,84 @@ namespace ProperPropertyProgression
                 }
             }
 
-            public static void SetAllBungalowPrices(int newPrice)
+// Needed for Il2CppType.Of<T>()
+
+public static void SetMappedPropertyPrices()
+    {
+        var propertyMap = new Dictionary<string, (Il2CppSystem.Type il2cppType, int price)>
+    {
+        { "Bungalow", (Il2CppType.Of<Bungalow>(), ModConfig.BungalowPrice.Value) },
+        { "MotelRoom", (Il2CppType.Of<MotelRoom>(), ModConfig.MotelPrice.Value) },
+        { "Sweatshop", (Il2CppType.Of<Sweatshop>(), ModConfig.SweatshopPrice.Value) },
+        { "Barn", (Il2CppType.Of<Property>(), ModConfig.BarnPrice.Value) },
+        { "DocksWarehouse", (Il2CppType.Of<Property>(), ModConfig.WarehousePrice.Value) },
+        { "Manor", (Il2CppType.Of<Property>(), ModConfig.ManorPrice.Value) }
+    };
+
+        foreach (var kvp in propertyMap)
+        {
+            string objectName = kvp.Key;
+            Il2CppSystem.Type il2cppType = kvp.Value.il2cppType;
+            int price = kvp.Value.price;
+
+            foreach (var comp in UnityEngine.Object.FindObjectsOfType(il2cppType))
             {
-                foreach (var bungalow in UnityEngine.Object.FindObjectsOfType<Bungalow>())
+                var component = comp.Cast<Il2CppSystem.Object>();
+                var unityComponent = component.TryCast<UnityEngine.Component>();
+
+                if (unityComponent != null && unityComponent.gameObject.name == objectName)
                 {
-                    bungalow.Price = newPrice;
+                    var priceField = il2cppType.GetField("Price");
+                    if (priceField != null)
+                    {
+                        priceField.SetValue(component, price);
+                    }
+                }
+            }
+        }
+
+        Melon<ProperPropertyProgression>.Logger.Msg("Property prices updated from config.");
+    }
+
+
+            public static void SetBusinessPricesAndCapacities()
+            {
+                var businessMap = new Dictionary<string, (int Price, int LaunderCapacity)>
+    {
+        { "Laundromat", (ModConfig.LaundromatPrice.Value, ModConfig.LaundromatLaunder.Value) },
+        { "PostOffice", (ModConfig.PostOfficePrice.Value, ModConfig.PostOfficeLaunder.Value) },
+        { "CarWash", (ModConfig.CarWashPrice.Value, ModConfig.CarWashLaunder.Value) },
+        { "TacoTicklers", (ModConfig.TacoTicklersPrice.Value, ModConfig.TacoTicklersLaunder.Value) }
+    };
+
+                foreach (var business in UnityEngine.Object.FindObjectsOfType<Business>())
+                {
+                    string objName = business.gameObject.name.Replace(" ", "").Replace("(Clone)", "").Trim();
+
+                    foreach (var kvp in businessMap)
+                    {
+                        string expected = kvp.Key.ToLowerInvariant();
+                        string actual = objName.ToLowerInvariant();
+
+                        if (actual.Contains(expected))
+                        {
+                            business.Price = kvp.Value.Price;
+                            business.LaunderCapacity = kvp.Value.LaunderCapacity;
+
+                            Melon<ProperPropertyProgression>.Logger.Msg(
+                                $"Set {business.gameObject.name} to Price {kvp.Value.Price}, Launder {kvp.Value.LaunderCapacity}"
+                            );
+                            break;
+                        }
+                    }
                 }
 
-                Melon<ProperPropertyProgression>.Logger.Msg("Bungalow prices updated.");
+                Melon<ProperPropertyProgression>.Logger.Msg("Business prices and launder capacities set from dictionary.");
             }
+
+
+
+
 
             public static void SetupMarcoRentRoomChoice()
             {
@@ -277,18 +378,21 @@ namespace ProperPropertyProgression
             Melon<ProperPropertyProgression>.Logger.Msg("RV is now visible.");
         }
 
-        public static bool ShouldClearRVBasedOnFirstQuest()
+        public static bool CheckFirstQuest()
         {
-            const string questTitle = "Open your phone (press Tab) and read your messages";
+            const string questTitle = "Open your phone and read your messages";
 
             foreach (var entry in UnityEngine.Object.FindObjectsOfType<Il2CppScheduleOne.Quests.QuestEntry>())
             {
-                if (entry.Title == questTitle)
+                if (entry?.Title?.Trim() == questTitle)
                 {
                     bool shouldClear = entry.state != Il2CppScheduleOne.Quests.EQuestState.Completed;
+                    Melon<ProperPropertyProgression>.Logger.Msg($"Quest '{questTitle}' is {entry.state} => shouldClear = {shouldClear}");
                     return shouldClear;
                 }
             }
+
+            Melon<ProperPropertyProgression>.Logger.Warning("First quest not found — defaulting to shouldClear = true");
             return true;
         }
 
