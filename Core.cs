@@ -16,7 +16,7 @@ using static Il2CppScheduleOne.NPCs.Relation.NPCRelationData;
 using static ProperPropertyProgression.ProperPropertyProgression;
 using HarmonyLib;
 
-[assembly: MelonInfo(typeof(ProperPropertyProgression.ProperPropertyProgression), "ProperPropertyProgression", "1.0.0", "Soul", null)]
+[assembly: MelonInfo(typeof(ProperPropertyProgression.ProperPropertyProgression), "ProperPropertyProgression", "1.1.3", "Soul", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
 
 namespace ProperPropertyProgression
@@ -54,7 +54,7 @@ namespace ProperPropertyProgression
             public static MelonPreferences_Entry<int> PostOfficePrice;
             public static MelonPreferences_Entry<int> CarWashPrice;
             public static MelonPreferences_Entry<int> TacoTicklersPrice;
-
+            public static MelonPreferences_Entry<bool> ChangeBusinessLaunder;
             public static MelonPreferences_Entry<int> LaundromatLaunder;
             public static MelonPreferences_Entry<int> PostOfficeLaunder;
             public static MelonPreferences_Entry<int> CarWashLaunder;
@@ -82,7 +82,7 @@ namespace ProperPropertyProgression
                 PostOfficePrice = BusinessChanges.CreateEntry("PostOfficePrice", 20000, "Post Office Price ", "GAME DEFAULT = 10000");
                 CarWashPrice = BusinessChanges.CreateEntry("CarWashPrice", 40000, "Car Wash Price ", "GAME DEFAULT = 20000");
                 TacoTicklersPrice = BusinessChanges.CreateEntry("TacoTicklersPrice", 70000, "TacoTicklers Price ", "GAME DEFAULT = 50000");
-
+                ChangeBusinessLaunder = BusinessChanges.CreateEntry("ChangeBusinessLaunder", true, "Change house prices.", "Changes the launderamount of all the businesses.");
                 LaundromatLaunder = BusinessChanges.CreateEntry("LaundromatLaunder", 5000, "Laundromat Launder Capacity ", "GAME DEFAULT = 2000");
                 PostOfficeLaunder = BusinessChanges.CreateEntry("PostOfficeLaunder", 5000, "Post Office Launder Capacity ", "GAME DEFAULT = 4000");
                 CarWashLaunder = BusinessChanges.CreateEntry("CarWashLaunder", 5000, "Car Wash Launder Capacity", "GAME DEFAULT = 6000");
@@ -138,7 +138,6 @@ namespace ProperPropertyProgression
                 DialogueModifier.ApplyPatch();
                 DialogueModifier.SetMappedPropertyPrices();
             }
-            if(ModConfig.ChangeBusinessPrices.Value)
             DialogueModifier.SetBusinessPricesAndCapacities();
             DisableQuestExplosions();
             DialogueModifier.SetQuestActive("Talk to the manager in the motel office");
@@ -253,12 +252,17 @@ public static void SetMappedPropertyPrices()
 
                         if (actual.Contains(expected))
                         {
-                            business.Price = kvp.Value.Price;
-                            business.LaunderCapacity = kvp.Value.LaunderCapacity;
+                            if (ModConfig.ChangeBusinessPrices.Value)
+                            {
+                                business.Price = kvp.Value.Price;
+                                Melon<ProperPropertyProgression>.Logger.Msg($"Set {business.gameObject.name} to Price {kvp.Value.Price}");
+                            }
+                            if (ModConfig.ChangeBusinessLaunder.Value)
+                            {
+                                business.LaunderCapacity = kvp.Value.LaunderCapacity;
+                                Melon<ProperPropertyProgression>.Logger.Msg($"Set {business.gameObject.name} to Launder Amount: {kvp.Value.LaunderCapacity}");
+                            }
 
-                            Melon<ProperPropertyProgression>.Logger.Msg(
-                                $"Set {business.gameObject.name} to Price {kvp.Value.Price}, Launder {kvp.Value.LaunderCapacity}"
-                            );
                             break;
                         }
                     }
