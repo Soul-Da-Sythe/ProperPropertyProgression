@@ -1,4 +1,4 @@
-# Property Overhaul  
+# Property Overhaul (LAG FIX)  
 by SoulDaSythe & pooderman 
 
 
@@ -46,6 +46,12 @@ Fixed bug where your RV gets wiped everytime you enter your save.
 UPDATE 3
 Actually fixed the bug, it wasnt a bug. It was intended by the developer to not save the RV contents on the first save.  
 Forced it to save and it now works.
+
+UPDATE 4  
+Made sure to close some loops that were still running after their use. Should fix some lag issues.
+
+
+
 ---
 
 ### My other Mods!
