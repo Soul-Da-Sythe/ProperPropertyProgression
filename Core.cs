@@ -15,6 +15,7 @@ using Il2CppScheduleOne.NPCs.CharacterClasses;
 using static Il2CppScheduleOne.NPCs.Relation.NPCRelationData;
 using static ProperPropertyProgression.ProperPropertyProgression;
 using HarmonyLib;
+using UnityEngine.Events;
 
 [assembly: MelonInfo(typeof(ProperPropertyProgression.ProperPropertyProgression), "ProperPropertyProgression", "1.1.3", "Soul", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
@@ -144,6 +145,7 @@ namespace ProperPropertyProgression
             DialogueModifier.SetQuestActive("Talk to Mrs. Ming at the Chinese restaurant");
             if (CheckFirstQuest() && ModConfig.StartRVEmpty.Value) ClearRVItemContainers();
             DialogueModifier.SetupMarcoRentRoomChoice();
+            yield break;
         }
 
         public static class DialogueModifier
@@ -153,6 +155,7 @@ namespace ProperPropertyProgression
                 { "Donna", ModConfig.MotelPrice.Value },
                 { "Ming", ModConfig.SweatshopPrice.Value }
             };
+            private static bool completedRV = false;
 
             public static void ApplyPatch()
             {
@@ -340,6 +343,12 @@ public static void SetMappedPropertyPrices()
                     }
 
                     yield return new WaitForSeconds(1f);
+                    if (completedRV || (isRVFixed() && !CheckFirstQuest())){
+
+                        choice.Enabled = false;
+                        Melon<ProperPropertyProgression>.Logger.Msg("RV is fixed and first quest is completed. Quiting routine.");
+                        yield break;
+                        }
                 }
             }
 
@@ -358,6 +367,7 @@ public static void SetMappedPropertyPrices()
                     SetRVActive();
                     UnlockAlbertNow();
                     Melon<ProperPropertyProgression>.Logger.Msg($"${ModConfig.RVPrice.Value} deducted and RV restored.");
+                    completedRV = true;
                 }
             }
         }
@@ -403,6 +413,33 @@ public static void SetMappedPropertyPrices()
             Melon<ProperPropertyProgression>.Logger.Msg("RV is now visible.");
         }
 
+
+        public static bool isRVFixed()
+        {
+            GameObject rvContainer = null, intactRV = null, destroyedRV = null;
+
+            foreach (var obj in UnityEngine.Resources.FindObjectsOfTypeAll<GameObject>())
+            {
+                if (obj.name == "RV" && obj.transform?.parent?.name == "@Properties")
+                {
+                    rvContainer = obj;
+                    break;
+                }
+            }
+
+            foreach (var t in rvContainer.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == "RV" && t.gameObject != rvContainer) intactRV = t.gameObject;
+                else if (t.name == "Destroyed RV") destroyedRV = t.gameObject;
+            }
+
+            if (intactRV != null && destroyedRV != null)
+            {
+                if (intactRV.active && !destroyedRV.active) return true; else return false;
+            }
+            return false;
+
+        }
         public static bool CheckFirstQuest()
         {
             const string questTitle = "Open your phone and read your messages";
