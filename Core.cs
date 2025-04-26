@@ -5,17 +5,12 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using Il2CppScheduleOne.Quests;
 using Il2CppScheduleOne.Property;
-using Il2CppScheduleOne.Interaction;
 using System.Reflection;
-using System.Linq;
-using System.Collections.Generic;
 using Il2CppFluffyUnderware.DevTools.Extensions;
 using Il2CppInterop.Runtime;
 using Il2CppScheduleOne.NPCs.CharacterClasses;
 using static Il2CppScheduleOne.NPCs.Relation.NPCRelationData;
-using static ProperPropertyProgression.ProperPropertyProgression;
 using HarmonyLib;
-using UnityEngine.Events;
 
 [assembly: MelonInfo(typeof(ProperPropertyProgression.ProperPropertyProgression), "ProperPropertyProgression", "1.1.3", "Soul", null)]
 [assembly: MelonGame("TVGS", "Schedule I")]
@@ -143,7 +138,8 @@ namespace ProperPropertyProgression
             DisableQuestExplosions();
             DialogueModifier.SetQuestActive("Talk to the manager in the motel office");
             DialogueModifier.SetQuestActive("Talk to Mrs. Ming at the Chinese restaurant");
-            if (CheckFirstQuest() && ModConfig.StartRVEmpty.Value) ClearRVItemContainers();
+            if (DialogueModifier.CheckFirstQuest() && ModConfig.StartRVEmpty.Value) ClearRVItemContainers();
+
             DialogueModifier.SetupMarcoRentRoomChoice();
             yield break;
         }
@@ -170,6 +166,10 @@ namespace ProperPropertyProgression
                 }
             }
 
+
+
+
+
             public static void SetQuestActive(string questTitle)
             {
                 foreach (var entry in UnityEngine.Object.FindObjectsOfType<QuestEntry>())
@@ -194,7 +194,6 @@ namespace ProperPropertyProgression
                 }
             }
 
-// Needed for Il2CppType.Of<T>()
 
 public static void SetMappedPropertyPrices()
     {
@@ -280,8 +279,6 @@ public static void SetMappedPropertyPrices()
 
             public static void SetupMarcoRentRoomChoice()
             {
-                const string questTitle = "Investigate the explosion";
-
                 GameObject donnaDialogue = null, marcoDialogue = null;
                 foreach (var obj in UnityEngine.Object.FindObjectsOfType<GameObject>())
                 {
@@ -293,9 +290,27 @@ public static void SetMappedPropertyPrices()
                     }
                 }
 
+                if (donnaDialogue == null || marcoDialogue == null)
+                {
+                    Melon<ProperPropertyProgression>.Logger.Warning("Could not find Donna or Marco Dialogue objects.");
+                    return;
+                }
+
                 var marcoController = marcoDialogue.GetComponent<DialogueController>();
                 var donnaController = donnaDialogue.GetComponent<DialogueController_Ming>();
+
+                if (marcoController == null || donnaController == null)
+                {
+                    Melon<ProperPropertyProgression>.Logger.Warning("Missing dialogue controllers on Donna or Marco.");
+                    return;
+                }
+
                 var sourceChoice = donnaController.Choices[3];
+                if (sourceChoice == null)
+                {
+                    Melon<ProperPropertyProgression>.Logger.Warning("Source choice not found on Donna's dialogue controller.");
+                    return;
+                }
 
                 var clonedConversation = UnityEngine.Object.Instantiate(sourceChoice.Conversation);
                 clonedConversation.name = "Marco_RentRoom_Conversation";
@@ -309,7 +324,7 @@ public static void SetMappedPropertyPrices()
                     onChoosen = new UnityEngine.Events.UnityEvent()
                 };
 
-                clonedConversation.DialogueNodeData[0].DialogueText = "I bet. You can try the motel if you want a decent place to stay, talk to Donna. Its pretty pricy though.";
+                clonedConversation.DialogueNodeData[0].DialogueText = "I bet. You can try the motel if you want a decent place to stay, talk to Donna. It's pretty pricy though.";
                 clonedConversation.DialogueNodeData[1].DialogueText = "Uh sure... I can fix the body but I don't think she'll ever run again";
                 clonedConversation.DialogueNodeData[1].choices[0].ChoiceText = "Yeah, I don't think I'm going anywhere for a while...";
                 if (clonedConversation.DialogueNodeData[1].choices.Count > 1)
@@ -318,39 +333,180 @@ public static void SetMappedPropertyPrices()
                 newChoice.onChoosen.AddListener((UnityEngine.Events.UnityAction)MarcoRentRoomAction);
                 marcoController.Choices.Add(newChoice);
 
-                MelonCoroutines.Start(WaitForQuestCompletionAndEnableChoice(questTitle, marcoController, newChoice));
+                // Start waiting for quests to load
+                MelonCoroutines.Start(FindQuestEntryWhenAvailable(rentQuest =>
+                {
+                    MelonCoroutines.Start(FindQuestEntryWhenAvailable(firstQuest =>
+                    {
+                        if (rentQuest != null && firstQuest != null)
+                        {
+                            MelonCoroutines.Start(WaitForQuestCompletionAndEnableChoice(rentQuest, firstQuest, marcoController, newChoice));
+                        }
+                    }));
+                }));
+
                 Melon<ProperPropertyProgression>.Logger.Msg("Added rent-room choice to Marco with a cloned conversation.");
             }
 
-            private static IEnumerator WaitForQuestCompletionAndEnableChoice(string questTitle, DialogueController controller, DialogueController.DialogueChoice choice)
+            private static IEnumerator FindQuestEntryWhenAvailable(Action<QuestEntry> onFound)
             {
-                EQuestState? previousState = null;
+                const string rentQuestTitle = "Investigate the explosion";
+                const string firstQuestTitle1 = "Open your phone (press Tab) and read your messages";
+                const string firstQuestTitle2 = "Open your phone and read your messages";
+
+                QuestEntry quest = null;
+                int attempts = 0;
+
+                var possibleTitles = new[] { rentQuestTitle, firstQuestTitle1, firstQuestTitle2 }
+                    .Select(NormalizeTitle)
+                    .ToList();
+
+                while (quest == null && attempts < 30) // Try for up to 30 seconds
+                {
+                    var quests = UnityEngine.Resources.FindObjectsOfTypeAll<QuestEntry>();
+
+                    foreach (var q in quests)
+                    {
+                        if (q?.Title == null)
+                            continue;
+
+                        var normalizedQuestTitle = NormalizeTitle(q.Title);
+
+                        if (possibleTitles.Any(target => target == normalizedQuestTitle))
+                        {
+                            quest = q;
+                            break;
+                        }
+                    }
+
+                    if (quest != null)
+                        break;
+
+                    attempts++;
+                    yield return new WaitForSeconds(1f);
+                }
+
+                if (quest != null)
+                {
+                    Melon<ProperPropertyProgression>.Logger.Msg($"Quest '{quest.Title}' matched one of possible titles after {attempts} seconds.");
+                    onFound?.Invoke(quest);
+                }
+                else
+                {
+                    Melon<ProperPropertyProgression>.Logger.Warning($"Quest matching Investigate or Open Phone not found after {attempts} seconds of searching.");
+                }
+            }
+
+
+            public static bool CheckFirstQuest()
+            {
+                const string firstQuestTitle1 = "Open your phone (press Tab) and read your messages";
+                const string firstQuestTitle2 = "Open your phone and read your messages";
+
+                var possibleTitles = new[] { firstQuestTitle1, firstQuestTitle2 }
+                    .Select(NormalizeTitle)
+                    .ToList();
+
+                foreach (var entry in UnityEngine.Resources.FindObjectsOfTypeAll<Il2CppScheduleOne.Quests.QuestEntry>())
+                {
+                    if (entry?.Title == null)
+                        continue;
+
+                    var normalizedEntryTitle = NormalizeTitle(entry.Title);
+
+                    if (possibleTitles.Any(target => target == normalizedEntryTitle))
+                    {
+                        bool shouldClear = entry.state != Il2CppScheduleOne.Quests.EQuestState.Completed;
+                        Melon<ProperPropertyProgression>.Logger.Msg($"Quest '{entry.Title}' is {entry.state} => shouldClear = {shouldClear}");
+                        return shouldClear;
+                    }
+                }
+
+                Melon<ProperPropertyProgression>.Logger.Warning("First quest not found — defaulting to shouldClear = true");
+                return true;
+            }
+
+
+            // Helper to normalize quest titles
+            private static string NormalizeTitle(string title)
+            {
+                return title.ToLowerInvariant().Replace(" ", "").Replace("\t", "").Replace("\n", "").Trim();
+            }
+
+
+
+            private static IEnumerator WaitForQuestCompletionAndEnableChoice(QuestEntry rentQuest, QuestEntry firstQuest, DialogueController controller, DialogueController.DialogueChoice choice)
+            {
+                var shownChoicesField = typeof(DialogueController).GetField("shownChoices", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                var (intactRV, destroyedRV) = FindRVObjects();
+                var initialState = rentQuest.state;
+                bool choiceEnabled = false;
+
+        
+                bool rvCurrentlyDestroyed = intactRV != null && destroyedRV != null &&
+                                             !intactRV.activeSelf && destroyedRV.activeSelf;
+
+                int frameCounter = 0;
+                const int rvCheckEveryXFrames = 10; 
 
                 while (true)
                 {
-                    var quest = UnityEngine.Object.FindObjectsOfType<QuestEntry>().FirstOrDefault(q => q.Title == questTitle);
-                    if (quest != null && quest.state != previousState)
+                    bool questNowCompleted = (initialState != EQuestState.Completed && rentQuest.state == EQuestState.Completed);
+
+                    if (frameCounter % rvCheckEveryXFrames == 0) 
                     {
-                        previousState = quest.state;
-                        choice.Enabled = quest.state == EQuestState.Completed;
+                        if (intactRV != null && destroyedRV != null)
+                        {
+                            rvCurrentlyDestroyed = !intactRV.activeSelf && destroyedRV.activeSelf;
+                        }
+                    }
+
+                    if (!choiceEnabled && (questNowCompleted || rvCurrentlyDestroyed))
+                    {
+                        choice.Enabled = true;
 
                         var filtered = new Il2CppSystem.Collections.Generic.List<DialogueController.DialogueChoice>();
                         foreach (var c in controller.Choices)
                             if (c.Enabled) filtered.Add(c);
 
-                        var shownChoicesField = typeof(DialogueController).GetField("shownChoices", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                         shownChoicesField?.SetValue(controller, filtered);
+
+                        if (questNowCompleted)
+                            Melon<ProperPropertyProgression>.Logger.Msg($"Rent quest '{rentQuest.Title}' transitioned from {initialState} to Completed. Enabled dialogue choice.");
+                        else if (rvCurrentlyDestroyed)
+                            Melon<ProperPropertyProgression>.Logger.Msg($"RV is currently destroyed. Enabled dialogue choice.");
+
+                        choiceEnabled = true;
                     }
 
-                    yield return new WaitForSeconds(1f);
-                    if (completedRV || (isRVFixed() && !CheckFirstQuest())){
-
+                    if (completedRV)
+                    {
                         choice.Enabled = false;
-                        Melon<ProperPropertyProgression>.Logger.Msg("RV is fixed and first quest is completed. Quiting routine.");
+
+                        var filtered = new Il2CppSystem.Collections.Generic.List<DialogueController.DialogueChoice>();
+                        foreach (var c in controller.Choices)
+                            if (c.Enabled) filtered.Add(c);
+
+                        shownChoicesField?.SetValue(controller, filtered);
+
+                        Melon<ProperPropertyProgression>.Logger.Msg("RV repaired. Disabled rent-room choice and exiting coroutine.");
                         yield break;
-                        }
+                    }
+
+                    frameCounter++;
+
+                    yield return null; 
                 }
             }
+
+
+
+
+
+
+
+
+
 
             public static void MarcoRentRoomAction()
             {
@@ -414,9 +570,11 @@ public static void SetMappedPropertyPrices()
         }
 
 
-        public static bool isRVFixed()
+        public static (GameObject intactRV, GameObject destroyedRV) FindRVObjects()
         {
-            GameObject rvContainer = null, intactRV = null, destroyedRV = null;
+            GameObject rvContainer = null;
+            GameObject intactRV = null;
+            GameObject destroyedRV = null;
 
             foreach (var obj in UnityEngine.Resources.FindObjectsOfTypeAll<GameObject>())
             {
@@ -427,36 +585,24 @@ public static void SetMappedPropertyPrices()
                 }
             }
 
+            if (rvContainer == null)
+                return (null, null);
+
             foreach (var t in rvContainer.GetComponentsInChildren<Transform>(true))
             {
-                if (t.name == "RV" && t.gameObject != rvContainer) intactRV = t.gameObject;
-                else if (t.name == "Destroyed RV") destroyedRV = t.gameObject;
+                if (t.gameObject == rvContainer)
+                    continue;
+
+                if (t.name == "RV")
+                    intactRV = t.gameObject;
+                else if (t.name == "Destroyed RV")
+                    destroyedRV = t.gameObject;
             }
 
-            if (intactRV != null && destroyedRV != null)
-            {
-                if (intactRV.active && !destroyedRV.active) return true; else return false;
-            }
-            return false;
-
+            return (intactRV, destroyedRV);
         }
-        public static bool CheckFirstQuest()
-        {
-            const string questTitle = "Open your phone and read your messages";
 
-            foreach (var entry in UnityEngine.Object.FindObjectsOfType<Il2CppScheduleOne.Quests.QuestEntry>())
-            {
-                if (entry?.Title?.Trim() == questTitle)
-                {
-                    bool shouldClear = entry.state != Il2CppScheduleOne.Quests.EQuestState.Completed;
-                    Melon<ProperPropertyProgression>.Logger.Msg($"Quest '{questTitle}' is {entry.state} => shouldClear = {shouldClear}");
-                    return shouldClear;
-                }
-            }
 
-            Melon<ProperPropertyProgression>.Logger.Warning("First quest not found — defaulting to shouldClear = true");
-            return true;
-        }
 
         public static void ClearRVItemContainers()
         {
